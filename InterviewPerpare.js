@@ -107,7 +107,8 @@ A media type (also MIME type and content type) is a two-part identifier foR file
 and format contents transmitted on the Internet.
 	
 	As an example, an HTML file might be designated "text/html; charset=UTF-8." 
-	In this example "text" is the type, "html" is the subtype, and "charset=UTF-8" is an optional parameter indicating the character encoding.
+	In this example "text" is the type, "html" is the subtype, and "charset=UTF-8" is an 
+	optional parameter indicating the character encoding.
 	
 	Common examples:
 		"application/json"
@@ -405,34 +406,346 @@ Question: On page load, will mypic.jpg get downloaded by the browser?
 Answer: No.
 
 
++++++++++++++++++++++++++++++++++++++++DOM+++++++++++++++++++++++++++++++++++++++
+1. window vs document
+Question: Is there any difference between window and document?
+Answer: Yes. JavaScript has a global object and everything runs under it. 
+		window is that global object that holds global variables, global functions, 
+		location, history everything is under it. Besides, setTimeout, ajax call 
+		(XMLHttpRequest), console or localStorage are part of window.
+
+		document is also under window. document is a property of the window object. 
+		document represents the DOM and DOM is the object oriented representation of 
+		the html markup you have written. All the nodes are part of document. 
+		Hence you can use getElementById or addEventListener on document. These methods 
+		are not present in the window object.
 
 
+		window.document === document; //true
+		window.getElementById; //undefined
+		document.getElementById; //function getElementById() { [native code] }
+      
+2. window.onload vs document.onload
+Question: Does document.onload and window.onload fire at the same time?
+Answer: 
+	window.onload is fired when DOM is ready and all the contents including images, 
+	css, scripts, sub-frames, etc. finished loaded. This means everything is loaded.
+
+	document.onload is fired when DOM (DOM tree built from markup code within the document)
+	is ready which can be prior to images and other external content is loaded.
+
+3. attribute vs property
+Question: Is attribute similar to property?
+Answer: attributes are just like attribute in your html tag (XML style attribute) inside 
+		the starting tag. html attributes are exposed to the DOM via property. Hence, 
+		a property is created when DOM is parsed for each attribute in the html tag. 
+		If you change an attribute only the value of the property will change. 
+		However, the value of attribute will remain same.
+
+<input id="my-input" type="text" value="Name:">
+
+var myInput = document.getElementById('my-input');
+myInput.getAttribute('value'); //"Name:"
+myInput.value; //'my dude'
+
+4. DOM Query
+Question: What are the different ways to get an element from DOM?
+Answer: You can use the following methods in document
+
+"getElementById" to get a element that has the provided Id.
+"getElementsByClassName" to get a nodelist (nodelist is not an array, rather it is array-like object) by providing a Class name.
+"getElementsByTagName" to get a nodelist by the provided tag name.
+"querySelector" you will pass css style selector (jquery style) and this will retrurn first matched element in the DOM.
+"querySelectorAll" will return a non-live nodelist by using depth-first pre order traversal of all the matched elements. 
+
+5. Fastest way to Query DOM
+Question: What is the fastest way to select elements by using css selectors?
+Answer: It depends on what you are selecting. If you have an ID of an element getElmentById is the fastest way to select an element. 
+		However, you should not have so many ID in you document to avoid style repetition. css Class getElementsByClassName 
+		is the second quickest way to select an element
+
+Here is the list: 
+
+ID (#myID)
+Class (.myClass)
+Tag (div, p)
+Sibling (div+p, div~p) //after & preceded
+child (div>p)
+Descendant (div p)
+Universal (*)
+Attribute (input[type="checkbox"])
+Pseudo (p:first-child)
 
 
+6. Use forEach on NodeList
+Question: How come, I cannot use forEach or similar array methods on a NodeList?
+Answer: Yeah. Both array and nodeList have length and you can loop through elements but they are not same object.
+
+	Both are inherited from Object. However array has different prototype object than nodeList. 
+	forEach, map, etc are on array.prototype which doesnt exist in the NodeList.prototype object. 
+	Hence, you dont have forEach on a nodeList
+
+var myNodeList = document.querySelectorAll('.my-class');
+var nodesArray = Array.prototype.slice.call(myNodeList);
+
+//use array method on nodeList
+nodesArray.forEach(function(el, idx){
+  console.log(idx, el);
+});
+
+7. getElementsByAttribute
+Question: If you need to implement getElementByAttribute, how would you implement it?
+Answer: First, get all the elements in the DOM. You can either get it by Tag Name '*' and then check whether 
+		they have the particular attribute. In this case, even if attribute is null that will be captured. If you need to check the value, 
+		you should be able to do it by passing one extra parameter and comparing it in the if block.
 
 
+function getElementsByAttribute2(attr){
+  var found = [], 
+      child;
+
+  function getNodeText(node){
+      if(node && node.childNodes && node.childNodes.length){
+          for(var i = 0, len = node.childNodes.length; i<len; i++){
+              child = node.childNodes[i];
+              if(child && child.getAttribute && child.getAttribute(attr)){
+                 found.push(child);
+              }
+              getNodeText(child);
+          }
+      }
+      else{
+          if(node.getAttribute && node.getAttribute(attr)){
+             found.push(node);
+          }
+     }
+  }
+  getNodeText(document.body);
+  return found;
+}
+
+8. add Class
+Question: How would you add a Class to an element by query selector?
+Answer: get the element and add the classname to the classlist.
 
 
+function addClass(selector, className){
+   var elm = document.querySelector(selector);
+   if (elm){
+      elm.classList.add(className);
+   }
+}
+
+9. Check Descendant
+Question: How could I verify whether one element is child of another?
+Answer: First check whether the passed parent is the direct parent of the child. 
+		If not, keep moving upward to the root of the tree.
 
 
+function isDescendant(parent, child){ 
+  while(child.parentNode ){ 
+    if(child.parentNode == parent)
+      return true;
+    else
+      child = child.parentNode;
+  }
+  return false;
+}
+
+10. innerHTML vs appendChild
+Question: What is the best way to create a DOM element? Set innherHTML or use createElement?
+Answer: When you set innerHTML property, browser removes all the current children of the elements. 
+Parse the string and assign the parsed string to the element as children.
+
+var ul = document.getElementById('myList');
+el.innerHTML = '<li>Only one item</li>';   
+
+appendChild
+
+On the other hand, while using appendChild, you create a new Element. Since you are creating it, 
+browser doesnt have to parse string and there is no invalid html. And you can pass the child to 
+the parent and child will be appended to the parent.
+
+var li = document.createElement("li");
+var text = document.createTextNode('Only one Item');
+
+li.appendChild(text);
+ul.appendChild(li);
 
 
+11. CrateDocumentFragment
+Question: What is createDocumentFragment and why you might use it?
+Answer: documentFragment a very lightweight or minimal part of a DOM or a subtree of a DOM tree. 
+		It is very helpful when you are manipulating a part of DOM for multiple times. 
+		It becomes expensive to hit a certain portion of DOM for hundreds time. You might cause 
+		reflow for hundred times.
+
+//bad practice. you are hitting the DOM every single time
+var list = ['foo', 'bar', 'baz', ... ],
+    el, text;
+for (var i = 0; i < list.length; i++) {
+    el = document.createElement('li');
+    text = document.createTextNode(list[i]);
+    el.appendChild(text);
+    document.body.appendChild(el);
+}
+
+//good practice. you causing reflow one time
+var fragment = document.createDocumentFragment(),
+    list = ['foo', 'bar', 'baz', ...],
+    el, text;
+for (var i = 0; i < list.length; i++) {
+    el = document.createElement('li');
+    text = document.createTextNode(list[i]);
+    el.appendChild(text);
+    fragment.appendChild(el);
+}
+document.body.appendChild(fragment);
 
 
+12. reflow
+Question: What is reflow? What causes reflow? How could you reduce reflow?
+Answer:
+	reflow: When you change size or position of an element in the page, all the elements 
+			after it has to change their position according to the changes you made. 
+			Hence, flow of the elements in the page is changed and this is called reflow.
+
+Why reflow is bad: Reflows could be very expensive and it might have a performance hit 
+			specially in the smaller devices like phone. As it might causes changes in the 
+			portion (or whole) layout of the page.
 
 
+Reasons to reflow: The following cases causes reflow:
+	
+	change layout (geometry of the page)
+	resize the window
+	change height/width of any element
+	changing font
+	change font size
+	move DOM element (animation)
+	adding or removing stylesheet
+	calculating offset height or offset width
+	display: none;
+
+How to avoid: To avoid reflow, try to avoid doing things in the above list and some more in the below
+
+	avoid setting multiple inline style
+	apply animation to the elements that are positioned fixed or absolute
+	avoid tables for layout
+
+13. repaint
+Question: What is repaint and when does this happen?
+Answer: repaint happens when you change the look of an element without changing the size and shape. 
+		This doesnt cause reflow as geometry of the element didnt changed.
+
+How it happens:
+
+	change background color
+	change text color
+	visibility hidden
+
+14. DOM ready
+Question: How could you make sure to run some javaScript when DOM is ready like $(document).ready?
+Answer: There are four different ways
+
+	option-1: Put your script in the last tag of html body element. DOM would be ready by the time browser hits the script tag.
+	option-2: Place your code inside a DOMContentLoaded handler. This event will be fired when DOM is completely loaded.
+	document.addEventListener('DOMContentLoaded', function(){   
+	   //put your script here
+	});
+	option-3: Watch changes in the readyState of the document. And the last state is "complete" state, you can put your code there.
+	document.onreadystatechange = function () {  
+	  if (document.readyState == "complete") {
+	    //put your script here
+	  }
+	}
+	option-4: Search jquery source code and copy dom ready function. In that case you have a ready function that works in the older 
+			browsers as well without loading the whole jquery library.
 
 
+15. Event bubble
+Question: What is event bubble? How does event flows?
+
+	Capture: When you clicked, browser knows a click event occurred. It starts from the window (lowest level/root of your website), 
+			then goes to document, then html root tag, then body, then table... its trying to reach the the as lowest level of element as possible.
+			This is called capture phase (phase -1).
+	Target: When browser reach the lowest level of element. In this case, you have clicked on a table cell (table data) hence target would be "td" tag. 
+			Then browser checks whether you have any click handler attached to this element. If there is any, browser executes that click hander. 
+			This is called target phase (phase -2).
+	Bubbling: After firing click hander attached to "td", browser walks toward root. One level upward and check whether there is any click handler 
+			attached with table row ("tr" element). If there is any it will execute that. Then it goes to tbody, table, body, html, document, window. 
+			In this stage its moving upward and this is called event bubbling or bubbling phase (phase-3). 
 
 
+16. Event Delegate
+Question: How would you destroy multiple list items with one click handler?
+
+<ul id="listToDestroy">
+    <li><a href="#">first item</a></li>
+    <li><a href="#">second item</a></li>
+    <li><a href="#">third item</a></li>
+    <li><a href="#">forth item</a></li>
+    <li><a href="#">Fifth item</a></li>
+
+document.getElementById('listToDestroy').addEventListener('click', function (e) { 
+    var elm = e.target.parentNode; 
+        elm.parentNode.removeChild(elm);
+        e.preventDefault();
+});
+
+17. destroy button
+Question: Create a button that is destroyed by clicking on it but two new buttons are created in its place.
+
+<div id="doubleHolder">
+  <button class="double">double</button>
+</div>
+        
+
+document.getElementById('doubleHolder').addEventListener('click', function (e) {   
+   if(e.target.classList.contains('double')){
+      var btn = document.createElement('button');
+      btn.setAttribute('class', 'double');
+      btn.innerHTML = 'double';
+
+      var btn2 = document.createElement('button');
+      btn2.setAttribute('class', 'double');
+      btn2.innerHTML = 'double';
+     
+      this.appendChild(btn);
+      this.appendChild(btn2);
+      this.removeChild(e.target);   
+    }
+  }); 
+
+18. Capture all click
+Question: How could you capture all clicks in a page?
+
+Answer: You can leverage, event bubble to capture all the clicks. As all the clicks will be bubbled up to the body.
+
+document.querySelector('body').addEventListener('click', function(e){
+  console.log('body clicked', e.target);
+});
+
+//or
+window.onclick =function(e){
+  console.log('someone clicked', e.target)
+}
+
+19. All text in a page
+Question: How can you get all the texts in a web page?
+Answer: The easiest way to get all the text is to get the innerText of body tag.
+
+document.body.innerText;
 
 
+20. defer vs async
+Question: What is defer and async keyword does in a script tag?
+Answer: HTML parser will ignore defer and async keyword for inline script (script that does not have a src attribute).
 
-
-
-
-
-
-
+	normal: When you have a plain script tag (no defer or async keyword), parser will pause parsing, 
+			script would be downloaded and exectuted. After that parsing resume.
+	defer: defer keyword in the script tag will defer the execution of the script. Hence script will be executed when DOM is available. 
+			Important point is, defer is not supported by all major major browsers.
+	async: If possible, set the execution of the script, asynchronously. async keyword has no effect on inline script.
 
 
